@@ -11,6 +11,8 @@ use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\StepTaskController;
+use App\Http\Controllers\SyncSheetController;
+use App\Http\Controllers\TaskBankController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskDueController;
 use App\Http\Controllers\TaskFileController;
@@ -107,3 +109,11 @@ Route::post('/announcement', [AnnouncementController::class, 'addNewAnnouncement
 Route::post('/save-player-id', [PlayerController::class, 'save']);
 
 Route::post('/check-version', [AppVersionController::class, 'checkVersion']);
+
+Route::post('/syncUpdate', [SyncSheetController::class, 'SyncSheetUpdate']);
+
+Route::get('/task-bank', [TaskBankController::class, 'index']);
+Route::post('/task-bank', [TaskBankController::class, 'store']);
+Route::put('/task-bank/{id}', [TaskBankController::class, 'update']);
+Route::delete('/task-bank/{id}', [TaskBankController::class, 'destroy']);
+Route::post('/task-bank/sync-by-position', [TaskBankController::class, 'syncByPosition']);

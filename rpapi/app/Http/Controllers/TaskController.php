@@ -69,20 +69,126 @@ class TaskController extends Controller
         return response()->json($data);
     }
 
+    // public function addTask(Request $request)
+    // {
+    //     $validateTask = $request->validate([
+    //         'task_name' => 'string|required',
+    //         'description' => 'string|required',
+    //         'task_category' => 'string|required',
+    //         's_bpartner_employee_id' => 'integer',
+    //         'created_by' => 'integer|required',
+    //         'task_status' => 'required',
+    //         'position_id' => 'integer',
+    //     ]);
+    //     $validateTask['is_active'] = '1';
+    //     $validateTask['created_date'] = date('Y-m-d H:i:s');
+    //     return Task::create($validateTask);
+    // }
+
     public function addTask(Request $request)
     {
         $validateTask = $request->validate([
             'task_name' => 'string|required',
             'description' => 'string|required',
             'task_category' => 'string|required',
-            's_bpartner_employee_id' => 'integer|required',
+            's_bpartner_employee_id' => 'integer|nullable',
             'created_by' => 'integer|required',
             'task_status' => 'required',
+            'position_id' => 'integer|nullable',
         ]);
-        $validateTask['is_active'] = '1';
-        $validateTask['created_date'] = date('Y-m-d H:i:s');
-        return Task::create($validateTask);
+
+        $validateTask['is_active'] = 1;
+        $validateTask['created_date'] = now();
+
+        if ($validateTask['task_category'] === 'Task') {
+            // Get all employees with this position_id
+            $userAccessList = \App\Models\UserAccess::where('position_id', $validateTask['position_id'])
+                ->where('is_active', 1)
+                ->pluck('s_bpartner_employee_id');
+
+            $tasks = [];
+            foreach ($userAccessList as $employeeId) {
+                $taskData = $validateTask;
+                $taskData['s_bpartner_employee_id'] = $employeeId;
+                $tasks[] = Task::create($taskData);
+            }
+
+            return response()->json([
+                'message' => 'Tasks created for all users with this position',
+                'data' => $tasks
+            ]);
+        }
+
+        // Default: To-Do List → save as is
+        $task = Task::create($validateTask);
+
+        return response()->json([
+            'message' => 'Task created',
+            'data' => $task
+        ]);
     }
+
+    public function syncTasks(Request $request)
+    {
+        $request->validate([
+            's_bpartner_employee_id' => 'required|integer'
+        ]);
+
+        $employeeId = $request->s_bpartner_employee_id;
+
+        // 1. Get the employee's position
+        $userAccess = \App\Models\UserAccess::where('s_bpartner_employee_id', $employeeId)
+            ->where('is_active', 1)
+            ->first();
+
+        if (!$userAccess) {
+            return response()->json([
+                'message' => 'No active position found for this employee'
+            ], 404);
+        }
+
+        $positionId = $userAccess->position_id;
+
+        // 2. Get all base tasks (assigned to position but not to any specific employee yet)
+        $baseTasks = \App\Models\Task::where('position_id', $positionId)
+            ->whereNull('s_bpartner_employee_id') // base task (template)
+            ->get();
+
+        if ($baseTasks->isEmpty()) {
+            return response()->json([
+                'message' => 'No base tasks found for this position'
+            ]);
+        }
+
+        $syncedTasks = [];
+
+        foreach ($baseTasks as $baseTask) {
+            // 3. Check if employee already has a copy of this task
+            $exists = \App\Models\Task::where('position_id', $positionId)
+                ->where('s_bpartner_employee_id', $employeeId)
+                ->where('task_name', $baseTask->task_name) // match by task name
+                ->exists();
+
+            if (!$exists) {
+                // 4. Duplicate base task for this employee
+                $taskData = $baseTask->replicate()->toArray();
+                unset($taskData['id']); // remove primary key
+                $taskData['s_bpartner_employee_id'] = $employeeId;
+                $taskData['created_date'] = now();
+
+                $newTask = \App\Models\Task::create($taskData);
+                $syncedTasks[] = $newTask;
+            }
+        }
+
+        return response()->json([
+            'message' => 'Tasks synced successfully',
+            'added_count' => count($syncedTasks),
+            'data' => $syncedTasks
+        ]);
+    }
+
+
 
     public function markasDone($id)
     {

@@ -21,6 +21,8 @@ class Task extends Model
         'created_date',
         'is_active',
         'task_status',
+        'position_id',
+        'task_bank_id'
     ];
 
     public function DueDates()
