@@ -29,7 +29,6 @@ class TaskBankController extends Controller
             'position_id'    => 'required|integer',
             'created_by'     => 'required|integer',
             'date_selected'  => 'nullable|string',
-            'due_date'       => 'nullable|date'
         ]);
         if ($validated['date_selected'] === "Today") {
             $validated['due_date'] = now();

@@ -45,28 +45,27 @@ class TaskController extends Controller
 
     public function TaskDueDates(Request $request)
     {
-        $dueDates = TaskDueDate::with(['task.user'])
-            ->whereHas('task', function ($q) use ($request) {
-                $q->filter($request->only(['assigned', 'type', 'status']))
-                ->where('task_status', '!=', 'COMPLETE')
-                ->where('is_active','=', '1');
-            })
+        $tasks = Task::with(['user', 'dueDates'])
+            ->filter($request->only(['assigned', 'type', 'status']))
+            ->where('task_status', '!=', 'COMPLETE')
+            ->where('is_active', 1)
             ->get();
 
-        $data = $dueDates->map(function ($due) {
+        $data = $tasks->map(function ($task) {
             return [
-                'task_i_information_id' => $due->Task?->task_i_information_id,
-                'task_name'             => $due->Task?->task_name,
-                'description'           => $due->Task?->description,
-                'due_date'              => $due->due_date,
-                'task_status'           => $due->Task?->task_status,
-                'firstname'             => $due->Task->user->firstname,
-                'lastname'              => $due->Task->user->lastname,
-                'email'                 => $due->Task->user->email,
+                'task_i_information_id' => $task->task_i_information_id,
+                'task_name'             => $task->task_name,
+                'description'           => $task->description,
+                'due_date'              => $task->dueDates->first()->due_date ?? null, // null if no due date
+                'task_status'           => $task->task_status,
+                'firstname'             => $task->user?->firstname,
+                'lastname'              => $task->user?->lastname,
+                'email'                 => $task->user?->email,
             ];
         });
 
         return response()->json($data);
+
     }
 
     // public function addTask(Request $request)
