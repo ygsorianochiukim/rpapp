@@ -9,10 +9,11 @@ class Position extends Model
     protected $table = 'emp_i_position';
 
     protected $primaryKey = 'position_id';
-    public $incrementing = true;
+    public $incrementing = false;
     protected $keyType = 'int';
 
     protected $fillable = [
+        'position_id',
         'position',
         'department',
         'function',

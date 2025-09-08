@@ -14,11 +14,11 @@ class TaskBankController extends Controller
 {
     public function index()
     {
-        $tasks = TaskBank::where('is_active', 1)->get();
+        $tasks = TaskBank::where('is_active', 1)
+        ->with('position')
+        ->get();
 
-        return response()->json([
-            'data' => $tasks
-        ]);
+        return response()->json($tasks);
     }
     public function store(Request $request)
     {

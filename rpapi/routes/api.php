@@ -111,7 +111,7 @@ Route::post('/save-player-id', [PlayerController::class, 'save']);
 Route::post('/check-version', [AppVersionController::class, 'checkVersion']);
 
 Route::post('/syncUpdate', [SyncSheetController::class, 'SyncSheetUpdate']);
-
+Route::post('/SyncSheetPosition', [SyncSheetController::class, 'SyncSheetPosition']);
 Route::get('/task-bank', [TaskBankController::class, 'index']);
 Route::post('/task-bank', [TaskBankController::class, 'store']);
 Route::put('/task-bank/{id}', [TaskBankController::class, 'update']);

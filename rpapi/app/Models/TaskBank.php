@@ -31,4 +31,9 @@ class TaskBank extends Model
     {
         return $this->hasMany(Task::class, 'task_bank_id', 'task_bank_id');
     }
+
+    public function position()
+    {
+        return $this->belongsTo(Position::class, 'position_id', 'position_id');
+    }
 }
