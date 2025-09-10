@@ -97,9 +97,11 @@ Route::get('/send-reminders', [TaskRemindController::class, 'send']);
 Route::get('/dueRepeat', [TaskRepeatController::class,'displayRepeat']);
 Route::post('/dueRepeat', [TaskRepeatController::class,'newDueDateRepeat']);
 Route::get('/dueRepeat/displayUserTask/{id}', [TaskRepeatController::class,'display_task_user']);
+Route::put('/dueRepeat/update/{id}', [TaskRepeatController::class,'updateSelectedRepeatFrequency']);
 
 Route::get('/taskDue', [TaskDueController::class,'displayTaskDue']);
 Route::post('/taskDue', [TaskDueController::class,'newDueDate']);
+Route::put('/taskDue/update/{id}', [TaskDueController::class,'updateSelectedDue']);
 Route::post('/taskDue/complete/{id}', [TaskDueController::class,'updatetaskDue']);
 Route::get('/taskDue/displayUserTask/{id}', [TaskDueController::class,'display_task_user']);
 
@@ -117,3 +119,5 @@ Route::post('/task-bank', [TaskBankController::class, 'store']);
 Route::put('/task-bank/{id}', [TaskBankController::class, 'update']);
 Route::delete('/task-bank/{id}', [TaskBankController::class, 'destroy']);
 Route::post('/task-bank/sync-by-position', [TaskBankController::class, 'syncByPosition']);
+Route::put('/task-bank/{id}/update-sync', [TaskBankController::class, 'updateAndSync']);
+Route::post('/task-bank/{id}/sync', [TaskBankController::class, 'syncSingleTask']);

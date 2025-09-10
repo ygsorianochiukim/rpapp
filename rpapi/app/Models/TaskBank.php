@@ -19,7 +19,13 @@ class TaskBank extends Model
         'due_date',
         'is_active',
         'created_by',
-        'created_date'
+        'created_date',
+        'task_notes',
+        'task_step',
+        'file',
+        'repeat_frequency',
+        'remind_task',
+        'date_remind',
     ];
     protected $attributes = [
         'is_active' => 1,
