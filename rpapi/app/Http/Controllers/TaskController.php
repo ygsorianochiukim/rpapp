@@ -38,6 +38,7 @@ class TaskController extends Controller
                 'due_date'              => $task->dueDates->first()->due_date ?? null,
                 'task_status'           => $task->task_status,
                 'firstname'             => $task->user?->firstname,
+                'companyname'           => $task->user?->companyname,
                 'lastname'              => $task->user?->lastname,
                 'email'                 => $task->user?->email,
             ];
@@ -64,6 +65,7 @@ class TaskController extends Controller
                 'due_date'              => $task->dueDates->first()->due_date ?? null,
                 'task_status'           => $task->task_status,
                 'firstname'             => $task->user?->firstname,
+                'companyname'             => $task->user?->companyname,
                 'lastname'              => $task->user?->lastname,
                 'email'                 => $task->user?->email,
             ];
@@ -194,6 +196,7 @@ class TaskController extends Controller
             'task_status'           => $task->task_status,
             'firstname' => $task->user->firstname,
             'middlename' => $task->user->middlename,
+            'companyname'=> $task->user->companyname,
             'lastname'  => $task->user->lastname,
             'email'     => $task->user->email,
             'contact_no' => $task->user->contact_no,
@@ -205,22 +208,26 @@ class TaskController extends Controller
 
     public function filterTask(Request $request)
     {
-        $query = Task::query();
-
+        $query = Task::with('dueDates')->where('is_active', 1);
         if ($request->filled('assigned')) {
             $query->where('s_bpartner_employee_id', $request->assigned);
         }
-
         if ($request->filled('type')) {
-            $query->where('task_category', $request->type);
+            if (in_array($request->type, ['Task', 'To-Do List'])) {
+                $query->where('task_category', $request->type);
+            }
         }
-
         if ($request->filled('status')) {
             $query->where('task_status', $request->status);
+            if (in_array($request->status, ['PENDING', 'ON-GOING'])) {
+                $query->whereHas('dueDates', function ($q) {
+                    $q->whereNotNull('due_date');
+                });
+            }
         }
-
         return response()->json($query->get());
     }
+
     public function pendingAndCompleteTasks($id)
     {
         $today = now()->startOfDay();
@@ -336,6 +343,7 @@ class TaskController extends Controller
                 $nodes[] = [
                     's_bpartner_employee_id' => $memberId,
                     'name'     => $memberUser->firstname . ' ' . $memberUser->lastname,
+                    'companyname'     => $memberUser->companyname,
                     'DEADLINE' => $deadlinePercent,
                     'ACTIVE'   => $activePercent,
                     'OWN_PENDING'  => $ownPending,
