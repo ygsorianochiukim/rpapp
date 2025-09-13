@@ -30,6 +30,7 @@ class AuthController extends Controller
         if (!$user->is_active) {
             return response()->json(['message' => 'Account is inactive'], 403);
         }
+        $user->tokens()->delete();
 
         $user->load('userAccess.position');
 
@@ -46,11 +47,6 @@ class AuthController extends Controller
             ]
         ]);
     }
-
-
-    /**
-     * Get the authenticated user
-     */
     public function me(Request $request)
     {
         $user = $request->user()->load([

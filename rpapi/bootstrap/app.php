@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'position' => \App\Http\Middleware\PositionMiddleware::class,
         ]);
+        $middleware->alias([
+            'check.token' => \App\Http\Middleware\EnsureTokenIsValid::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
