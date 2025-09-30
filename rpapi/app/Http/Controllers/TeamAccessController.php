@@ -37,11 +37,13 @@ class TeamAccessController extends Controller
     {
         $directMembers = TeamAccess::with('user')
             ->where('supervisor_id', $id)
+            ->where('is_active', '1')
             ->get();
 
         $directMemberIds = $directMembers->pluck('s_bpartner_employee_id')->toArray();
         $secondLevelMembers = TeamAccess::with('user')
             ->whereIn('supervisor_id', $directMemberIds)
+            ->where('is_active', '1')
             ->get();
 
         $allMembers = $directMembers->merge($secondLevelMembers)

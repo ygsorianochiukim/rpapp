@@ -88,4 +88,22 @@ class TaskDueController extends Controller
 
         return response()->json(['message' => 'Due date updated successfully']);
     }
+
+    public function updateSelectedDue($id, Request $request)
+    {
+        $request->validate([
+            'due_date' => 'required|date',
+        ]);
+
+        $dueUpdate = TaskDueDate::where('task_due_date_id', $id)->first();
+        if (!$dueUpdate) {
+            return response()->json(['message' => 'Task due date not found'], 404);
+        }
+        $dueUpdate->due_date = date('Y-m-d H:i:s', strtotime($request->due_date));
+        $dueUpdate->save();
+        return response()->json([
+            'message' => 'Due date updated successfully',
+            'due_date' => $dueUpdate->due_date
+        ]);
+    }
 }

@@ -13,7 +13,7 @@ class UserAccountController extends Controller
 {
     public function display_user()
     {
-        $UserAccount = UserAccount::orderBy('firstname', 'asc')->get();
+        $UserAccount = UserAccount::orderBy('firstname', 'asc')->with(['userAccess.position'])->get();
 
         return response()->json($UserAccount);
     }

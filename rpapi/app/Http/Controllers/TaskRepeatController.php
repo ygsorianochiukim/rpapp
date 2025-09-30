@@ -29,4 +29,23 @@ class TaskRepeatController extends Controller
         $step = TaskRepeat::where('task_i_information_id', '=', $id)->get();
         return response()->json($step);
     }
+
+    public function updateSelectedRepeatFrequency($id, Request $request)
+    {
+        $request->validate([
+            'repeat_frequency' => 'required|string',
+        ]);
+
+        $repeatUpdate = TaskRepeat::where('task_repeat_id', $id)->first();
+        if (!$repeatUpdate) {
+            return response()->json(['message' => 'Task repeat frequency not found'], 404);
+        }
+        
+        $repeatUpdate->repeat_frequency = $request->repeat_frequency;
+        $repeatUpdate->save();
+        return response()->json([
+            'message' => 'Task repeat frequency updated successfully',
+            'repeat_frequency' => $repeatUpdate->repeat_frequency
+        ]);
+    }
 }

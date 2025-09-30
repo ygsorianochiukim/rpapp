@@ -19,69 +19,144 @@ class TaskController extends Controller
 
     public function displayUsersTask(Request $request, $id)
     {
-        $dueDates = TaskDueDate::with(['Task.user'])
-            ->whereHas('Task', function ($q) use ($id, $request) {
-                $q->where('s_bpartner_employee_id', $id)
-                ->filter($request->only(['type', 'status']));
-            })
-            ->where('is_active','=', '1')
+        $tasks = Task::with(['user', 'dueDates'])
+            ->where('s_bpartner_employee_id', $id)
+            ->filter($request->only(['type', 'status']))
+            ->where('task_status', '!=', 'COMPLETE')
+            ->where('is_active', 1)
             ->get();
 
-        $data = $dueDates->map(function ($due) {
+        $tasks = $tasks->sortBy(function ($task) {
+            return optional($task->dueDates->first())->due_date ?? now()->addYears(100);
+        });
+
+        $data = $tasks->map(function ($task) {
             return [
-                'task_i_information_id' => $due->Task?->task_i_information_id,
-                'task_name'             => $due->Task?->task_name,
-                'description'           => $due->Task?->description,
-                'due_date'              => $due->due_date,
-                'task_status'           => $due->Task?->task_status,
-                'firstname'             => $due->Task->user->firstname,
-                'lastname'              => $due->Task->user->lastname,
-                'email'                 => $due->Task->user->email,
+                'task_i_information_id' => $task->task_i_information_id,
+                'task_name'             => $task->task_name,
+                'description'           => $task->description,
+                'due_date'              => $task->dueDates->first()->due_date ?? null,
+                'task_status'           => $task->task_status,
+                'firstname'             => $task->user?->firstname,
+                'companyname'           => $task->user?->companyname,
+                'lastname'              => $task->user?->lastname,
+                'email'                 => $task->user?->email,
             ];
         });
 
-        return response()->json($data);
+        return response()->json($data->values());
     }
 
     public function TaskDueDates(Request $request)
     {
-        $dueDates = TaskDueDate::with(['task.user'])
-            ->whereHas('task', function ($q) use ($request) {
-                $q->filter($request->only(['assigned', 'type', 'status']))
-                ->where('task_status', '!=', 'COMPLETE')
-                ->where('is_active','=', '1');
-            })
+        $tasks = Task::with(['user', 'dueDates'])
+            ->filter($request->only(['assigned', 'type', 'status']))
+            ->where('task_status', '!=', 'COMPLETE')
+            ->where('is_active', 1)
             ->get();
-
-        $data = $dueDates->map(function ($due) {
+        $tasks = $tasks->sortBy(function ($task) {
+            return optional($task->dueDates->first())->due_date ?? now()->addYears(100); 
+        });
+        $data = $tasks->map(function ($task) {
             return [
-                'task_i_information_id' => $due->Task?->task_i_information_id,
-                'task_name'             => $due->Task?->task_name,
-                'description'           => $due->Task?->description,
-                'due_date'              => $due->due_date,
-                'task_status'           => $due->Task?->task_status,
-                'firstname'             => $due->Task->user->firstname,
-                'lastname'              => $due->Task->user->lastname,
-                'email'                 => $due->Task->user->email,
+                'task_i_information_id' => $task->task_i_information_id,
+                'task_name'             => $task->task_name,
+                'description'           => $task->description,
+                'due_date'              => $task->dueDates->first()->due_date ?? null,
+                'task_status'           => $task->task_status,
+                'firstname'             => $task->user?->firstname,
+                'companyname'             => $task->user?->companyname,
+                'lastname'              => $task->user?->lastname,
+                'email'                 => $task->user?->email,
             ];
         });
-
-        return response()->json($data);
+        return response()->json($data->values());
     }
-
     public function addTask(Request $request)
     {
         $validateTask = $request->validate([
             'task_name' => 'string|required',
             'description' => 'string|required',
             'task_category' => 'string|required',
-            's_bpartner_employee_id' => 'integer|required',
+            's_bpartner_employee_id' => 'integer|nullable',
             'created_by' => 'integer|required',
             'task_status' => 'required',
+            'position_id' => 'integer|nullable',
         ]);
-        $validateTask['is_active'] = '1';
-        $validateTask['created_date'] = date('Y-m-d H:i:s');
-        return Task::create($validateTask);
+
+        $validateTask['is_active'] = 1;
+        $validateTask['created_date'] = now();
+
+        if ($validateTask['task_category'] === 'Task') {
+
+            $userAccessList = \App\Models\UserAccess::where('position_id', $validateTask['position_id'])
+                ->where('is_active', 1)
+                ->pluck('s_bpartner_employee_id');
+
+            $tasks = [];
+            foreach ($userAccessList as $employeeId) {
+                $taskData = $validateTask;
+                $taskData['s_bpartner_employee_id'] = $employeeId;
+                $tasks[] = Task::create($taskData);
+            }
+
+            return response()->json([
+                'message' => 'Tasks created for all users with this position',
+                'data' => $tasks
+            ]);
+        }
+        $task = Task::create($validateTask);
+
+        return response()->json([
+            'message' => 'Task created',
+            'data' => $task
+        ]);
+    }
+
+    public function syncTasks(Request $request)
+    {
+        $request->validate([
+            's_bpartner_employee_id' => 'required|integer'
+        ]);
+        $employeeId = $request->s_bpartner_employee_id;
+        $userAccess = \App\Models\UserAccess::where('s_bpartner_employee_id', $employeeId)
+            ->where('is_active', 1)
+            ->first();
+        if (!$userAccess) {
+            return response()->json([
+                'message' => 'No active position found for this employee'
+            ], 404);
+        }
+        $positionId = $userAccess->position_id;
+        $baseTasks = \App\Models\Task::where('position_id', $positionId)
+            ->whereNull('s_bpartner_employee_id')
+            ->get();
+        if ($baseTasks->isEmpty()) {
+            return response()->json([
+                'message' => 'No base tasks found for this position'
+            ]);
+        }
+        $syncedTasks = [];
+        foreach ($baseTasks as $baseTask) {
+            $exists = \App\Models\Task::where('position_id', $positionId)
+                ->where('s_bpartner_employee_id', $employeeId)
+                ->where('task_name', $baseTask->task_name)
+                ->exists();
+            if (!$exists) {
+                $taskData = $baseTask->replicate()->toArray();
+                unset($taskData['id']);
+                $taskData['s_bpartner_employee_id'] = $employeeId;
+                $taskData['created_date'] = now();
+
+                $newTask = \App\Models\Task::create($taskData);
+                $syncedTasks[] = $newTask;
+            }
+        }
+        return response()->json([
+            'message' => 'Tasks synced successfully',
+            'added_count' => count($syncedTasks),
+            'data' => $syncedTasks
+        ]);
     }
 
     public function markasDone($id)
@@ -121,6 +196,7 @@ class TaskController extends Controller
             'task_status'           => $task->task_status,
             'firstname' => $task->user->firstname,
             'middlename' => $task->user->middlename,
+            'companyname'=> $task->user->companyname,
             'lastname'  => $task->user->lastname,
             'email'     => $task->user->email,
             'contact_no' => $task->user->contact_no,
@@ -132,27 +208,32 @@ class TaskController extends Controller
 
     public function filterTask(Request $request)
     {
-        $query = Task::query();
-
+        $query = Task::with('dueDates')->where('is_active', 1);
         if ($request->filled('assigned')) {
             $query->where('s_bpartner_employee_id', $request->assigned);
         }
-
         if ($request->filled('type')) {
-            $query->where('task_category', $request->type);
+            if (in_array($request->type, ['Task', 'To-Do List'])) {
+                $query->where('task_category', $request->type);
+            }
         }
-
         if ($request->filled('status')) {
             $query->where('task_status', $request->status);
+            if (in_array($request->status, ['PENDING', 'ON-GOING'])) {
+                $query->whereHas('dueDates', function ($q) {
+                    $q->whereNotNull('due_date');
+                });
+            }
         }
-
         return response()->json($query->get());
     }
+
     public function pendingAndCompleteTasks($id)
     {
         $today = now()->startOfDay();
         $tasks = Task::with('DueDates')
             ->where('s_bpartner_employee_id', $id)
+            ->where('is_active', 1)
             ->get();
 
         $totalTasks = $tasks->count();
@@ -167,6 +248,7 @@ class TaskController extends Controller
         $deadlinePercent = $totalTasks > 0 ? round(($deadlineCount / $totalTasks) * 100, 2) : 0;
         $activePercent   = $totalTasks > 0 ? round(($activeCount / $totalTasks) * 100, 2) : 0;
         $teamAccess = TeamAccess::select('supervisor_id', 's_bpartner_employee_id')->get()->groupBy('supervisor_id');
+        
         $visited = [];
 
         $collectTeamMembers = function ($supervisorId) use (&$collectTeamMembers, &$visited, $teamAccess) {
@@ -181,8 +263,9 @@ class TaskController extends Controller
             return $all;
         };
         $teamMemberIds = $collectTeamMembers($id);
-        $teamTasks = Task::with('DueDates')
+         $teamTasks = Task::with('DueDates')
             ->whereIn('s_bpartner_employee_id', $teamMemberIds)
+            ->where('is_active', 1)
             ->get();
         $teamTotal = $teamTasks->count();
 
@@ -213,7 +296,8 @@ class TaskController extends Controller
             ->get()
             ->groupBy('supervisor_id');
         $allTasks = Task::with('DueDates')
-            ->select('s_bpartner_employee_id', 'task_i_information_id')
+            ->select('s_bpartner_employee_id', 'task_i_information_id', 'is_active')
+            ->where('is_active', 1)
             ->get()
             ->groupBy('s_bpartner_employee_id');
 
@@ -259,6 +343,7 @@ class TaskController extends Controller
                 $nodes[] = [
                     's_bpartner_employee_id' => $memberId,
                     'name'     => $memberUser->firstname . ' ' . $memberUser->lastname,
+                    'companyname'     => $memberUser->companyname,
                     'DEADLINE' => $deadlinePercent,
                     'ACTIVE'   => $activePercent,
                     'OWN_PENDING'  => $ownPending,
