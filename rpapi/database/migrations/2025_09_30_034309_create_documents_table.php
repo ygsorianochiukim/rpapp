@@ -11,8 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('documents', function (Blueprint $table) {
-            $table->id();
+        Schema::create('documents_i_information_table', function (Blueprint $table) {
+            $table->id('documents_i_information_id');
+            $table->string('doc_title');
+            $table->string('doc_link');
+            $table->boolean('is_active')->default(true);
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamp('created_date')->useCurrent();
             $table->timestamps();
         });
     }

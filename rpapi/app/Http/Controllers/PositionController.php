@@ -13,6 +13,11 @@ class PositionController extends Controller
         
         return response()->json($displayPosition);
     }
+    public function displayPositionGap($id){
+        $displayPosition = Position::where('position_id' , $id) -> first();
+        
+        return response()->json($displayPosition);
+    }
 
     public function newPosition(Request $request){
         $validatedPostion = $request->validate([

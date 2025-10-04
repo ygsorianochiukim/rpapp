@@ -9,6 +9,7 @@ use App\Http\Controllers\AccessLineController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\StepTaskController;
 use App\Http\Controllers\SyncSheetController;
@@ -45,6 +46,7 @@ Route::post('/userAccount/password/{id}', [UserAccountController::class, 'update
 
 Route::post('/position', [PositionController::class,'newPosition']);
 Route::get('/position', [PositionController::class,'displayPosition']);
+Route::get('/position/{id}', [PositionController::class,'displayPositionGap']);
 
 Route::get('/userAccess', [UserAccessController::class,'displayUserAccess']);
 Route::post('/userAccess', [UserAccessController::class,'addNewAccess']);
@@ -121,3 +123,6 @@ Route::delete('/task-bank/{id}', [TaskBankController::class, 'destroy']);
 Route::post('/task-bank/sync-by-position', [TaskBankController::class, 'syncByPosition']);
 Route::put('/task-bank/{id}/update-sync', [TaskBankController::class, 'updateAndSync']);
 Route::post('/task-bank/{id}/sync', [TaskBankController::class, 'syncSingleTask']);
+
+Route::get('/documents',[DocumentController::class, 'displayDocuments']);
+Route::post('/documents',[DocumentController::class, 'newDocuments']);
